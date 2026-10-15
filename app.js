@@ -58,7 +58,9 @@ function save() {
 }
 
 function pushHistory() {
-  history.push(JSON.stringify({ values: state.values, notes: state.notes, givens: state.givens }));
+  history.push(JSON.stringify({
+    values: state.values, notes: state.notes, givens: state.givens, uncertain: [...uncertain],
+  }));
   if (history.length > HISTORY_LIMIT) history.shift();
 }
 
@@ -196,7 +198,9 @@ function input(d) {
 function undo() {
   const previous = history.pop();
   if (!previous) return;
-  Object.assign(state, JSON.parse(previous));
+  const { uncertain: marked = [], ...saved } = JSON.parse(previous);
+  Object.assign(state, saved);
+  uncertain = new Set(marked);
   hint = null;
   wrong.clear();
   commit();

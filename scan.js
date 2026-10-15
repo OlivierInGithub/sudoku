@@ -1,7 +1,7 @@
 // Lecture d'une grille de Sudoku sur une photo : détection du cadre, redressement,
 // puis reconnaissance des chiffres par comparaison avec des modèles. Tout tourne dans le navigateur.
 
-import { conflicts, solve } from './sudoku.js';
+import { PEERS, conflicts, solve } from './sudoku.js';
 
 const WORK_SIZE = 1000; // plus grand côté de l'image où l'on cherche la grille, en pixels
 const DETAIL_SIZE = 2400; // plus grand côté de l'image où l'on lit les chiffres
@@ -208,29 +208,62 @@ export function warp(gray, w, h, corners, size, sub = 1) {
   return out;
 }
 
-/** Part des points du quadrillage 10×10 attendu qui tombent sur de l'encre. */
+/**
+ * Ressemblance avec un quadrillage 9×9 : part d'encre sur les 10 lignes attendues, moins la part
+ * d'encre à mi-chemin entre elles. Une texture uniforme (trame d'écran, papier) donne environ 0.
+ */
 function gridScore(mask, w, h, corners) {
   const H = homography(UNIT_SQUARE, corners);
   const STEPS = 60;
-  let hit = 0;
-  let total = 0;
-  for (let k = 0; k <= 9; k++) {
-    for (let s = 0; s <= STEPS; s++) {
-      for (const p of [project(H, k / 9, s / STEPS), project(H, s / STEPS, k / 9)]) {
-        const x = Math.round(p.x);
-        const y = Math.round(p.y);
-        total++;
-        if (x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x]) hit++;
+  const inkRate = (offset, count) => {
+    let hit = 0;
+    let total = 0;
+    for (let k = 0; k < count; k++) {
+      for (let s = 0; s <= STEPS; s++) {
+        const t = (k + offset) / 9;
+        for (const p of [project(H, t, s / STEPS), project(H, s / STEPS, t)]) {
+          const x = Math.round(p.x);
+          const y = Math.round(p.y);
+          total++;
+          if (x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x]) hit++;
+        }
       }
     }
+    return hit / total;
+  };
+  return inkRate(0, 10) - inkRate(0.5, 9);
+}
+
+/** Flou par moyenne sur un carré de (2r+1)², en deux passes (lignes puis colonnes). */
+function boxBlur(gray, w, h, r) {
+  const tmp = new Float32Array(w * h);
+  const out = new Uint8ClampedArray(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++, n++) sum += gray[y * w + k];
+      tmp[y * w + x] = sum / n;
+    }
   }
-  return hit / total;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++, n++) sum += tmp[k * w + x];
+      out[y * w + x] = sum / n;
+    }
+  }
+  return out;
 }
 
 /** Cherche le cadre de la grille : le réseau de traits connectés qui ressemble le plus à un quadrillage. */
 export function detectGrid({ gray, width: w, height: h }) {
   const radius = Math.max(7, Math.round(Math.min(w, h) / 50));
-  const mask = dilate(adaptiveThreshold(gray, w, h, radius, 7), w, h);
+  // Un léger flou efface les textures fines (trame d'un écran photographié, grain du papier)
+  // sans effacer les traits de la grille.
+  const smooth = boxBlur(gray, w, h, Math.max(1, Math.round(Math.min(w, h) / 400)));
+  const mask = dilate(adaptiveThreshold(smooth, w, h, radius, 7), w, h);
   const candidates = components(mask, w, h).comps
     .filter((c) => {
       const bw = c.maxX - c.minX + 1;
@@ -241,7 +274,7 @@ export function detectGrid({ gray, width: w, height: h }) {
     .slice(0, 10);
 
   let best = null;
-  let bestScore = 0.35; // en dessous, ce n'est probablement pas une grille
+  let bestScore = 0.25; // en dessous, ce n'est probablement pas une grille
   for (const c of candidates) {
     const corners = [c.tl, c.tr, c.br, c.bl];
     const score = gridScore(mask, w, h, corners);
@@ -480,7 +513,23 @@ function refine(features, ranked, fonts) {
   });
 }
 
-const isUncertain = (r) => r[0].score < UNCERTAIN_SCORE || (1 - r[0].score) / (1 - r[1].score) > UNCERTAIN_RATIO;
+// Rapport des distances au 1er et au 2e chiffre : plus il est proche de 1, moins la lecture est sûre.
+const doubt = (r) => (1 - r[0].score) / (1 - r[1].score);
+const isUncertain = (r) => r[0].score < UNCERTAIN_SCORE || doubt(r) > UNCERTAIN_RATIO;
+
+/**
+ * Dans un doublon (même chiffre deux fois dans une ligne, colonne ou carré), seule la lecture
+ * la moins sûre est suspecte, et aucune si l'une des cases en cause est déjà douteuse.
+ */
+function suspectsInConflicts(read, ranked, uncertain) {
+  const suspects = [];
+  for (const i of conflicts(read)) {
+    const rivals = PEERS[i].filter((p) => read[p] === read[i]);
+    if (uncertain.has(i) || rivals.some((p) => uncertain.has(p))) continue;
+    if (rivals.every((p) => doubt(ranked[i]) >= doubt(ranked[p]))) suspects.push(i);
+  }
+  return suspects;
+}
 
 /** Si la grille lue est incohérente, essaie de corriger une case douteuse. */
 function repair(grid, ranked) {
@@ -528,7 +577,7 @@ export function readGrid(image, corners) {
 
   const read = ranked.map((r) => (r ? r[0].digit : 0));
   const uncertain = new Set(ranked.flatMap((r, i) => (r && isUncertain(r) ? [i] : [])));
-  for (const i of conflicts(read)) uncertain.add(i);
+  for (const i of suspectsInConflicts(read, ranked, uncertain)) uncertain.add(i);
 
   const { grid, changed } = repair(read, ranked);
   if (changed !== null) uncertain.add(changed);
