@@ -1,0 +1,14 @@
+{
+  "name": "Sudoku",
+  "short_name": "Sudoku",
+  "description": "Saisissez une grille de Sudoku et faites-vous aider pour la remplir.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2f6fdb",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

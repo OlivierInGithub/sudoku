@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <rect width="96" height="96" rx="20" fill="#2f6fdb"/>
+  <g stroke="#ffffff" stroke-linecap="round">
+    <path d="M38 18v60M58 18v60M18 38h60M18 58h60" stroke-width="4"/>
+  </g>
+  <text x="28" y="35" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+  <text x="48" y="55" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="68" y="75" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">9</text>
+</svg>

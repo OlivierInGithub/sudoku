@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14171f" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Saisissez une grille de Sudoku et faites-vous aider pour la remplir.">
+  <title>Sudoku</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body data-mode="edit">
+  <main class="app">
+    <header class="header">
+      <h1>Sudoku</h1>
+      <span id="mode-label" class="mode-label"></span>
+    </header>
+
+    <div id="grid" class="grid" role="grid" aria-label="Grille de Sudoku"></div>
+
+    <p id="message" class="message" aria-live="polite">
+      <span id="message-text"></span>
+      <button id="message-action" type="button" class="link-button" hidden></button>
+    </p>
+
+    <section class="pad" aria-label="Clavier">
+      <div id="digits" class="digits"></div>
+      <div class="pad-actions">
+        <button id="btn-notes" type="button" class="play-only toggle" aria-pressed="false">✎ Notes</button>
+        <button id="btn-erase" type="button">⌫ Effacer</button>
+        <button id="btn-undo" type="button">↶ Annuler</button>
+      </div>
+    </section>
+
+    <nav class="toolbar">
+      <button id="btn-example" type="button" class="edit-only">Exemple</button>
+      <button id="btn-clear" type="button" class="edit-only">Vider</button>
+      <button id="btn-start" type="button" class="edit-only primary">Commencer</button>
+
+      <button id="btn-hint" type="button" class="play-only primary">💡 Indice</button>
+      <button id="btn-check" type="button" class="play-only">Vérifier</button>
+      <button id="btn-candidates" type="button" class="play-only toggle" aria-pressed="false">Candidats</button>
+      <button id="btn-edit" type="button" class="play-only">Modifier la grille</button>
+    </nav>
+  </main>
+</body>
+</html>
