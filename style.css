@@ -17,6 +17,8 @@
   --hint-unit: #fff6d6;
   --button: #e7eaf2;
   --button-hover: #dce1ec;
+  --uncertain: #e8890c;
+  --uncertain-bg: #fff0dc;
   color-scheme: light dark;
 }
 
@@ -40,6 +42,8 @@
     --hint-unit: #2f2b1d;
     --button: #283044;
     --button-hover: #313a52;
+    --uncertain: #f0a040;
+    --uncertain-bg: #4a3517;
   }
 }
 
@@ -335,4 +339,128 @@ body[data-mode="play"] .edit-only {
 /* En saisie, la ligne d'actions n'a que deux boutons. */
 body[data-mode="edit"] .pad-actions {
   grid-template-columns: repeat(2, 1fr);
+}
+
+/* ---------- Scan ---------- */
+
+.cell.uncertain {
+  background: var(--uncertain-bg);
+  box-shadow: inset 0 0 0 2px var(--uncertain);
+}
+
+.cell.uncertain.selected {
+  background: var(--selected);
+}
+
+body.scanning {
+  overflow: hidden;
+}
+
+.scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.scanner[hidden] {
+  display: none;
+}
+
+.scanner-bar {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scanner-bar h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.scanner-bar button,
+.scan-actions button,
+.big-button {
+  border: 0;
+  border-radius: 8px;
+  background: var(--button);
+  height: 44px;
+  padding: 0 14px;
+}
+
+.scan-step {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.scan-step[hidden] {
+  display: none;
+}
+
+.scan-step p {
+  margin: 0;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.big-button {
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.big-button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.big-button:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.scan-canvas {
+  display: block;
+  border-radius: 6px;
+  touch-action: none;
+}
+
+.scan-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.scan-status {
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

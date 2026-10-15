@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests du scan</title>
+  <style>
+    body { margin: 16px; font: 14px system-ui, sans-serif; background: #fff; color: #222; }
+    table { border-collapse: collapse; margin: 12px 0; }
+    th, td { padding: 3px 8px; border: 1px solid #ddd; text-align: right; }
+    td:first-child, th:first-child { text-align: left; }
+    .bad { background: #fde3e3; }
+    #images canvas, #images img { width: 240px; margin: 4px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Tests du scan sur des photos synthétiques</h1>
+  <p>Grilles dessinées dans plusieurs polices, mises en perspective, avec ombre, bruit, flou et compression JPEG.</p>
+  <p id="summary">Calcul en cours…</p>
+  <table id="results"></table>
+  <div id="images"></div>
+  <script type="module" src="scan-test.js"></script>
+</body>
+</html>

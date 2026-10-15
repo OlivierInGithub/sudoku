@@ -1,6 +1,7 @@
 import {
   ROW, COL, PEERS, bit, candidatesMask, conflicts, digitsOf, findHint, parseGrid, popcount, solve,
 } from './sudoku.js';
+import { isScannerOpen, openScanner } from './scan-ui.js';
 
 const STORAGE_KEY = 'sudoku-state-v1';
 const HISTORY_LIMIT = 200;
@@ -32,6 +33,7 @@ let state = load() ?? freshState();
 let selected = null;
 let hint = null;
 let wrong = new Set();
+let uncertain = new Set(); // cases mal reconnues au scan
 let history = [];
 let messageCallback = null;
 
@@ -107,6 +109,7 @@ function render() {
     el.classList.toggle('same', v !== 0 && v === selValue);
     el.classList.toggle('conflict', conf.has(i));
     el.classList.toggle('wrong', wrong.has(i));
+    el.classList.toggle('uncertain', !play && uncertain.has(i));
     el.classList.toggle('hint', hint?.cell === i);
     el.classList.toggle('hint-unit', hintUnit.has(i));
 
@@ -184,6 +187,7 @@ function input(d) {
   }
 
   wrong.delete(i);
+  uncertain.delete(i);
   hint = null;
   commit();
   if (play) checkComplete();
@@ -216,7 +220,30 @@ function loadExample() {
   state.givens = grid.slice();
   state.values = grid.slice();
   state.notes = emptyGrid();
+  uncertain.clear();
   showMessage('Exemple chargé. Appuyez sur « Commencer » pour le résoudre.');
+  commit();
+}
+
+const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
+function applyScan(result) {
+  pushHistory();
+  state.givens = result.grid.slice();
+  state.values = result.grid.slice();
+  state.notes = emptyGrid();
+  uncertain = new Set(result.uncertain);
+  wrong.clear();
+  hint = null;
+  selected = null;
+  const count = result.grid.filter(Boolean).length;
+  if (count < 17) {
+    showMessage(`Seulement ${plural(count, 'chiffre')} reconnu${count > 1 ? 's' : ''} : reprenez la photo plus près et bien à plat, ou complétez à la main.`);
+  } else if (uncertain.size) {
+    showMessage(`${count} chiffres reconnus. Vérifiez surtout ${uncertain.size > 1 ? 'les' : 'la'} ${plural(uncertain.size, 'case')} en orange, puis appuyez sur « Commencer ».`);
+  } else {
+    showMessage(`${count} chiffres reconnus. Comparez avec votre grille, puis appuyez sur « Commencer ».`);
+  }
   commit();
 }
 
@@ -227,6 +254,7 @@ function clearGrid() {
   state.values = emptyGrid();
   state.notes = emptyGrid();
   wrong.clear();
+  uncertain.clear();
   hint = null;
   showMessage('Grille vide. Touchez une case puis un chiffre pour saisir l’énoncé.');
   commit();
@@ -255,6 +283,7 @@ function startGame() {
   state.notes = emptyGrid();
   history = [];
   wrong.clear();
+  uncertain.clear();
   hint = null;
   showMessage(count > 1
     ? 'Grille à plusieurs solutions : « Vérifier » et « Indice » se basent sur l’une d’elles.'
@@ -356,6 +385,10 @@ $('#btn-notes').addEventListener('click', () => {
   state.notesMode = !state.notesMode;
   commit();
 });
+$('#btn-scan').addEventListener('click', () => {
+  if (state.values.some(Boolean) && !confirm('Le scan remplacera la grille saisie. Continuer ?')) return;
+  openScanner(applyScan);
+});
 $('#btn-example').addEventListener('click', loadExample);
 $('#btn-clear').addEventListener('click', clearGrid);
 $('#btn-start').addEventListener('click', startGame);
@@ -371,6 +404,7 @@ messageAction.addEventListener('click', () => messageCallback?.());
 const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
 
 document.addEventListener('keydown', (e) => {
+  if (isScannerOpen()) return;
   if (e.ctrlKey || e.metaKey) {
     if (e.key.toLowerCase() === 'z') {
       e.preventDefault();

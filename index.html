@@ -37,6 +37,7 @@
     </section>
 
     <nav class="toolbar">
+      <button id="btn-scan" type="button" class="edit-only">📷 Scanner</button>
       <button id="btn-example" type="button" class="edit-only">Exemple</button>
       <button id="btn-clear" type="button" class="edit-only">Vider</button>
       <button id="btn-start" type="button" class="edit-only primary">Commencer</button>
@@ -47,5 +48,35 @@
       <button id="btn-edit" type="button" class="play-only">Modifier la grille</button>
     </nav>
   </main>
+
+  <div id="scanner" class="scanner" role="dialog" aria-modal="true" aria-labelledby="scan-title" hidden>
+    <div class="scanner-bar">
+      <h2 id="scan-title">Scanner une grille</h2>
+      <button id="scan-cancel" type="button">Annuler</button>
+    </div>
+
+    <div id="scan-pick" class="scan-step">
+      <p>Photographiez la grille bien à plat, sans reflet, en la cadrant au plus près.</p>
+      <label class="big-button primary">
+        📷 Prendre une photo
+        <input id="scan-camera" class="visually-hidden" type="file" accept="image/*" capture="environment">
+      </label>
+      <label class="big-button">
+        🖼️ Choisir une image
+        <input id="scan-file" class="visually-hidden" type="file" accept="image/*">
+      </label>
+    </div>
+
+    <div id="scan-adjust" class="scan-step" hidden>
+      <p>Faites glisser les 4 coins sur les angles extérieurs de la grille : le quadrillage bleu doit suivre les lignes.</p>
+      <canvas id="scan-canvas" class="scan-canvas"></canvas>
+      <div class="scan-actions">
+        <button id="scan-retake" type="button">Autre photo</button>
+        <button id="scan-read" type="button" class="primary">Lire la grille</button>
+      </div>
+    </div>
+
+    <p id="scan-status" class="scan-status" aria-live="polite"></p>
+  </div>
 </body>
 </html>
