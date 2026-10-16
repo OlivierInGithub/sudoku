@@ -7,9 +7,10 @@ export const BOX = Array.from({ length: 81 }, (_, i) => Math.floor(ROW[i] / 3) *
 const range9 = Array.from({ length: 9 }, (_, k) => k);
 const cellsWhere = (pred) => range9.flatMap((r) => range9.map((c) => r * 9 + c)).filter(pred);
 
-export const ROW_UNITS = range9.map((k) => ({ name: `la ligne ${k + 1}`, cells: cellsWhere((i) => ROW[i] === k) }));
-export const COL_UNITS = range9.map((k) => ({ name: `la colonne ${k + 1}`, cells: cellsWhere((i) => COL[i] === k) }));
-export const BOX_UNITS = range9.map((k) => ({ name: 'le carré en surbrillance', cells: cellsWhere((i) => BOX[i] === k) }));
+// `name` sert dans les indices, où le groupe est en surbrillance.
+export const ROW_UNITS = range9.map((k) => ({ name: 'cette ligne', cells: cellsWhere((i) => ROW[i] === k) }));
+export const COL_UNITS = range9.map((k) => ({ name: 'cette colonne', cells: cellsWhere((i) => COL[i] === k) }));
+export const BOX_UNITS = range9.map((k) => ({ name: 'ce carré', cells: cellsWhere((i) => BOX[i] === k) }));
 
 export const PEERS = Array.from({ length: 81 }, (_, i) =>
   cellsWhere((j) => j !== i && (ROW[j] === ROW[i] || COL[j] === COL[i] || BOX[j] === BOX[i])),
@@ -108,7 +109,8 @@ export function solve(grid, limit = 2) {
 
 /**
  * Cherche une case déductible par une technique simple.
- * Renvoie { cell, digit, unit, text } ou null.
+ * Renvoie { cell, digit, unit, steps } ou null : `unit` est le groupe de cases (carré, ligne ou
+ * colonne) où chercher, `steps` les trois messages de l'indice, du plus vague au plus précis.
  */
 export function findHint(grid) {
   const cand = grid.map((_, i) => candidatesMask(grid, i));
@@ -123,7 +125,11 @@ export function findHint(grid) {
             cell: spots[0],
             digit: d,
             unit: unit.cells,
-            text: `Dans ${unit.name}, le ${d} ne peut aller que dans une seule case.`,
+            steps: [
+              `Vous pouvez placer un ${d}.`,
+              `Il y a un ${d} à placer dans ${unit.name}.`,
+              `Le ${d} va ici : c’est la seule case de ${unit.name} où il peut aller.`,
+            ],
           };
         }
       }
@@ -135,11 +141,19 @@ export function findHint(grid) {
     for (let i = 0; i < 81; i++) {
       if (grid[i] || popcount(cand[i]) !== 1) continue;
       const [d] = digitsOf(cand[i]);
+      // On montre le groupe de la case qui a le moins de cases vides : la recherche y est plus courte.
+      const units = [ROW_UNITS[ROW[i]], COL_UNITS[COL[i]], BOX_UNITS[BOX[i]]];
+      const empties = (u) => u.cells.filter((j) => !grid[j]).length;
+      const unit = units.reduce((a, b) => (empties(b) < empties(a) ? b : a));
       return {
         cell: i,
         digit: d,
-        unit: PEERS[i],
-        text: `Ligne ${ROW[i] + 1}, colonne ${COL[i] + 1} : sa ligne, sa colonne et son carré contiennent déjà tous les chiffres sauf le ${d}.`,
+        unit: unit.cells,
+        steps: [
+          `Vous pouvez placer un ${d}.`,
+          `Une case de ${unit.name} n’accepte plus que le ${d}.`,
+          `Le ${d} va ici : sa ligne, sa colonne et son carré contiennent déjà tous les autres chiffres.`,
+        ],
       };
     }
     return null;

@@ -31,7 +31,7 @@ const freshState = () => ({
 
 let state = load() ?? freshState();
 let selected = null;
-let hint = null;
+let hint = null; // indice en cours ; hint.level = nombre d'étapes déjà montrées (1 à 3)
 let wrong = new Set();
 let uncertain = new Set(); // cases mal reconnues au scan
 let history = [];
@@ -101,7 +101,9 @@ function render() {
   const conf = conflicts(state.values);
   const selValue = selected === null ? 0 : state.values[selected];
   const peers = selected === null ? new Set() : new Set(PEERS[selected]);
-  const hintUnit = new Set(hint?.unit ?? []);
+  const hintLevel = hint?.level ?? 0;
+  const hintUnit = new Set(hintLevel >= 2 ? hint.unit : []);
+  const hintCell = hint && hintLevel >= hint.cellLevel ? hint.cell : null;
 
   cells.forEach((el, i) => {
     const v = state.values[i];
@@ -112,7 +114,7 @@ function render() {
     el.classList.toggle('conflict', conf.has(i));
     el.classList.toggle('wrong', wrong.has(i));
     el.classList.toggle('uncertain', !play && uncertain.has(i));
-    el.classList.toggle('hint', hint?.cell === i);
+    el.classList.toggle('hint', hintCell === i);
     el.classList.toggle('hint-unit', hintUnit.has(i));
 
     let label = `Ligne ${ROW[i] + 1}, colonne ${COL[i] + 1}`;
@@ -140,6 +142,7 @@ function render() {
   $('#btn-notes').setAttribute('aria-pressed', state.notesMode);
   $('#btn-candidates').setAttribute('aria-pressed', state.autoCandidates);
   $('#btn-undo').disabled = history.length === 0;
+  $('#btn-hint').textContent = hint && hintLevel < 3 ? hint.buttons[hintLevel - 1] : '💡 Indice';
 }
 
 function renderNotes(mask, highlight) {
@@ -336,33 +339,51 @@ function giveHint() {
     return;
   }
 
-  hint = findHint(state.values);
-  if (!hint) {
-    // Aucune technique simple : on révèle la case la plus contrainte.
-    const empty = state.values.flatMap((v, i) => (v ? [] : [i]));
-    if (!empty.length) return;
-    const cell = empty.reduce((a, b) =>
-      popcount(candidatesMask(state.values, b)) < popcount(candidatesMask(state.values, a)) ? b : a);
-    const options = digitsOf(candidatesMask(state.values, cell)).join(', ');
-    hint = {
-      cell,
-      digit: state.solution[cell],
-      unit: [],
-      text: `Pas de déduction simple ici. Cette case peut contenir ${options}.`,
-    };
+  // Chaque appui précise le même indice : le chiffre, puis le groupe où chercher, puis la case.
+  // Après la 3e étape, ou dès que la grille change (hint remis à null), on repart d'un nouvel indice.
+  if (!hint || hint.level >= 3) {
+    hint = newHint();
+    if (!hint) return;
   }
+  hint.level++;
 
-  selected = hint.cell;
-  const { cell, digit } = hint;
-  showMessage(hint.text, {
+  const { cell, digit, level } = hint;
+  if (level >= hint.cellLevel) selected = cell;
+  showMessage(hint.steps[level - 1], level < 3 ? null : {
     label: `Placer le ${digit}`,
     run: () => {
+      showMessage(''); // avant input(), qui peut annoncer la fin de la grille
       selected = cell;
       state.notesMode = false;
       input(digit);
     },
   });
   render();
+}
+
+function newHint() {
+  const found = findHint(state.values);
+  if (found) return { ...found, level: 0, cellLevel: 3, buttons: ['💡 Plus précis', '💡 Quelle case ?'] };
+
+  // Aucune technique simple : on montre la case la plus contrainte, puis son chiffre.
+  const empty = state.values.flatMap((v, i) => (v ? [] : [i]));
+  if (!empty.length) return null;
+  const cell = empty.reduce((a, b) =>
+    popcount(candidatesMask(state.values, b)) < popcount(candidatesMask(state.values, a)) ? b : a);
+  const digit = state.solution[cell];
+  return {
+    cell,
+    digit,
+    unit: [],
+    level: 0,
+    cellLevel: 2,
+    buttons: ['💡 Quelle case ?', '💡 Quel chiffre ?'],
+    steps: [
+      'Pas de déduction simple ici : je peux vous montrer la case qui a le moins de possibilités.',
+      `Cette case peut contenir ${digitsOf(candidatesMask(state.values, cell)).join(', ').replace(/, (\d)$/, ' ou $1')}.`,
+      `C’est le ${digit}.`,
+    ],
+  };
 }
 
 function checkComplete() {
